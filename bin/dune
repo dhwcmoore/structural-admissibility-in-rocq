@@ -1,0 +1,3 @@
+(executable
+ (name main)
+ (libraries observational_kernel))

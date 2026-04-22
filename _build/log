@@ -1,0 +1,18 @@
+# dune exec bin/main.exe
+# OCAMLPARAM: unset
+# Shared cache: disabled
+# Shared cache location: /home/duston/.cache/dune/db
+# Workspace root: /data/observational-kernel
+# Auto-detected concurrency: 8
+# Dune context:
+#  { name = "default"
+#  ; kind = "default"
+#  ; profile = Dev
+#  ; merlin = true
+#  ; fdo_target_exe = None
+#  ; build_dir = In_build_dir "default"
+#  ; installed_env =
+#      map { "INSIDE_DUNE" : "/data/observational-kernel/_build/default" }
+#  ; instrument_with = []
+#  }
+$ /usr/bin/ocamlc.opt -config > /tmp/dune_ebd8ea_output
