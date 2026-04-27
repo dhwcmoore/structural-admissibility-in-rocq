@@ -14,6 +14,7 @@ _build/
 *.log
 *.out
 *.pdf
+!paper/*.pdf
 *.synctex.gz
 *.fls
 *.fdb_latexmk
