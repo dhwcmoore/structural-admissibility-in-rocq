@@ -2,3 +2,25 @@ _build/
 *.byte
 *.native
 .merlin
+
+# Rocq compiled artifacts
+*.vo
+*.vok
+*.vos
+*.glob
+*.aux
+
+# LaTeX generated files
+*.log
+*.out
+*.pdf
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+*.toc
+*.lof
+*.lot
+*.bbl
+*.blg
+*.nav
+*.snm

@@ -1,10 +1,10 @@
 (* ================================================================== *)
-(*  BDGI Perturbation Theory — Proof Skeleton                          *)
+(*  BDGI Perturbation Theory — Proved Development                      *)
 (*  Rocq/Coq development for rupture theorem and safety wrappers       *)
 (*                                                                     *)
-(*  Status: fully proved: no_decision, monitor_as_evidence,           *)
+(*  Status: fully proved: monitor_as_evidence, conditional_safety,    *)
 (*           no_alg_factorisation, warrant_debt_implies_non_admissible, *)
-(*           conditional_safety, rupture_decomposition_proved           *)
+(*           rupture_decomposition_proved                               *)
 (*           admitted: rupture_decomposition (abstract, over Parameter) *)
 (* ================================================================== *)
 
@@ -35,6 +35,8 @@ Record Interval := mkInterval {
   iv_hi : R;
   iv_wf : (iv_lo <= iv_hi)%R   (* well-formedness *)
 }.
+
+Definition zero_iv : Interval := mkInterval 0 0 (Rle_refl 0).
 
 (* A perturbation is typed by its boundary classification,
    carrier, and magnitude interval. *)
@@ -172,6 +174,7 @@ Theorem conditional_safety :
     forall p, In p all_perturbs -> tol p.
 Proof.
   intros sc tol all_perturbs _ Hclosed p Hin.
+  unfold ClosedUnder in Hclosed.
   rewrite Forall_forall in Hclosed.
   exact (Hclosed p Hin).
 Qed.
@@ -265,52 +268,37 @@ Definition PredAdmissible (P : Perturbation -> Prop) : Prop :=
   forall p q : Perturbation, alg_equiv p q -> (P p <-> P q).
 
 (* ------------------------------------------------------------------ *)
-(*  8.2  EMG sensitivity implies inadmissibility                       *)
+(*  8.2  Concrete witnesses for non-factorisation                      *)
 (* ------------------------------------------------------------------ *)
 
-(*  A predicate P is EMG-sensitive if it witnesses a pair (p, q) that
-    are algebraically equivalent in carrier and magnitude but differ in
-    BType (one INV or REL, one EMG), and P separates them. *)
+(*  NOTE: emg_sensitive_not_admissible has been removed — it is FALSE
+    under the current definitions.
 
-Definition EMGSensitive (P : Perturbation -> Prop) : Prop :=
-  exists p q : Perturbation,
-    p_carrier p = p_carrier q /\
-    p_magnitude p = p_magnitude q /\
-    btype_algebraic (p_btype p) = true /\
-    p_btype q = EMG /\
-    (P p /\ ~ P q) \/ (~ P p /\ P q).
+    The flaw: alg_equiv requires BOTH inputs to carry
+    btype_algebraic = true, so PredAdmissible imposes no constraint on
+    a predicate's behaviour at EMG inputs.  Concretely,
+    emg_sensitive_tol (below) is simultaneously EMG-sensitive and
+    PredAdmissible: on every alg_equiv pair both sides are algebraic,
+    so the predicate is trivially True on both; yet the EMG witness
+    separates it from an algebraic input.
 
-(*  Main admissibility theorem (parallel to Theorem 1 of the EWD note):
-    any EMG-sensitive predicate is not admissible from algebraic
-    structure alone.  The proof is immediate: alg_equiv requires both
-    arguments to be algebraic (btype_algebraic = true), so an EMG
-    perturbation is never in the same kernel class as an INV or REL
-    one; a predicate that distinguishes them therefore witnesses a
-    failure of invariance under some prospective algebraic equiv, and
-    no decision procedure over the algebraic projection can decide it. *)
+    The correct non-recoverability result is no_alg_factorisation
+    (Section 8.3), which uses an actual map into the algebraic subtype.  *)
 
-Theorem emg_sensitive_not_admissible :
-  forall (P : Perturbation -> Prop),
-    EMGSensitive P -> ~ PredAdmissible P.
-Proof.
-  intros P [p [q [Hcarrier [Hmag [Halgp [Hemgq Hsep]]]]]] Hadm.
-  unfold PredAdmissible in Hadm.
-  (*  q is EMG so btype_algebraic (p_btype q) = false.
-      Therefore alg_equiv p q does not hold (fourth conjunct fails).
-      But PredAdmissible only constrains P on alg_equiv pairs, so
-      the witness (p, q) is outside that constraint — the contradiction
-      comes from the existence of any decision procedure D over the
-      algebraic image that would have to agree with P on all algebraic
-      inputs.  We show this by constructing the kernel argument. *)
-  (*  Formally: if P were admissible, it would be constant on every
-      alg_equiv class.  But the EMG witness forces P to depend on
-      a dimension (BType) that alg_equiv collapses.  Since alg_equiv
-      is defined only on algebraic pairs, any decision procedure D on
-      the algebraic image cannot see q at all — so it cannot be used
-      to decide P(q) from P(p) even when carrier and magnitude agree. *)
-  (*  The full constructive proof requires a concrete algebraic image
-      type; this skeleton records the structure. *)
-Admitted.
+Definition emg_sensitive_tol : TolPredicate :=
+  fun p => match p_btype p with
+           | EMG => False
+           | _   => True
+           end.
+
+Definition p_emg : Perturbation := mkPerturbation EMG Signal zero_iv 0.
+Definition p_inv : Perturbation := mkPerturbation INV Signal zero_iv 0.
+
+Lemma rupture_emg : Rupture emg_sensitive_tol p_emg.
+Proof. unfold Rupture, emg_sensitive_tol, p_emg; simpl; tauto. Qed.
+
+Lemma no_rupture_inv : ~ Rupture emg_sensitive_tol p_inv.
+Proof. unfold Rupture, emg_sensitive_tol, p_inv; simpl; tauto. Qed.
 
 (* ------------------------------------------------------------------ *)
 (*  8.3  Non-factorisation theorem                                     *)
@@ -335,21 +323,36 @@ Definition RupturePreserving (f : AlgHom) (tol : TolPredicate) : Prop :=
   forall p : Perturbation,
     Rupture tol p <-> Rupture tol (proj_alg (f p)).
 
-(*  Non-factorisation: no AlgHom is Rupture-preserving for every tol.
-    Proof sketch: an EMG perturbation p with Rupture tol p holds
-    witnesses a defect that any algebraic image f(p) must suppress
-    (since f(p) is algebraic), but then tol (proj_alg (f p)) may hold
-    even though tol p does not — contradiction with preservation. *)
+(*  Key lemma: every AlgPerturbation is tolerated by emg_sensitive_tol.
+    The sigma-type certificate rules out EMG by case analysis on the
+    boolean proof obligation. *)
+Lemma alg_tol : forall ap : AlgPerturbation,
+    emg_sensitive_tol (proj_alg ap).
+Proof.
+  intros [p Hp].
+  unfold proj_alg, emg_sensitive_tol; simpl.
+  destruct (p_btype p) eqn:Hbt.
+  - exact I.
+  - exact I.
+  - simpl in Hp. discriminate.
+Qed.
 
+(*  No AlgHom is Rupture-preserving for every tolerance predicate.
+    Witness: emg_sensitive_tol and p_emg.  Any f maps p_emg into an
+    AlgPerturbation; alg_tol shows that image is tolerated; but p_emg
+    itself is not tolerated; preservation would require both to agree. *)
 Theorem no_alg_factorisation :
   forall (f : AlgHom),
     ~ (forall (tol : TolPredicate), RupturePreserving f tol).
 Proof.
-  (*  Construct a tolerance predicate tol that holds on all algebraic
-      perturbations but fails on a specific EMG one.  Then f maps the
-      EMG to an algebraic image on which tol holds, violating
-      Rupture-preservation. *)
-Admitted.
+  intros f Hpres.
+  specialize (Hpres emg_sensitive_tol).
+  unfold RupturePreserving in Hpres.
+  specialize (Hpres p_emg).
+  assert (Hrup : Rupture emg_sensitive_tol p_emg) by apply rupture_emg.
+  apply (proj1 Hpres) in Hrup.
+  exact (Hrup (alg_tol (f p_emg))).
+Qed.
 
 (* ------------------------------------------------------------------ *)
 (*  8.4  Warrant as observational indistinguishability                 *)

@@ -1,0 +1,1881 @@
+\documentclass[12pt]{article}
+
+\usepackage[margin=1.15in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage{url}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{setspace}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+
+\setlength{\headheight}{14pt}
+
+% ------------------------------------------------------------------
+% Theorem environments
+% ------------------------------------------------------------------
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{proposition}[theorem]{Proposition}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{conjecture}[theorem]{Conjecture}
+
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+% ------------------------------------------------------------------
+% Listings for Rocq
+% ------------------------------------------------------------------
+\definecolor{rocqblue}{rgb}{0.08,0.20,0.52}
+\definecolor{rocqgray}{rgb}{0.45,0.45,0.45}
+\definecolor{rocqgreen}{rgb}{0.08,0.42,0.08}
+\definecolor{rocqbg}{rgb}{0.97,0.97,0.99}
+
+\lstdefinestyle{rocq}{
+  language=ML,
+  backgroundcolor=\color{rocqbg},
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{rocqblue}\bfseries,
+  commentstyle=\color{rocqgray}\itshape,
+  stringstyle=\color{rocqgreen},
+  numbers=left,
+  numberstyle=\tiny\color{rocqgray},
+  numbersep=8pt,
+  frame=single,
+  framerule=0.4pt,
+  rulecolor=\color{rocqgray!40},
+  breaklines=true,
+  captionpos=b,
+  morekeywords={Definition,Theorem,Lemma,Proof,Qed,Inductive,Record,
+                Parameter,Axiom,Module,End,Type,forall,exists,fun,
+                match,with,let,in,Prop,Set,Conjecture,Corollary,
+                Section,Require,Import,Fixpoint,destruct,exact,
+                apply,intros,unfold,right,left,split,simpl,
+                reflexivity,auto,rewrite,classic,Forall},
+  deletekeywords={not,and,or,true,false},
+}
+
+% ------------------------------------------------------------------
+% Section title formatting
+% ------------------------------------------------------------------
+\titleformat{\section}{\large\bfseries}{\thesection.}{0.5em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection.}{0.5em}{}
+\titleformat{\subsubsection}{\normalsize\itshape}{\thesubsubsection.}{0.5em}{}
+
+% ------------------------------------------------------------------
+% Header
+% ------------------------------------------------------------------
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\small\textit{Structural Admissibility in Rocq}}
+\lhead{\small\textit{Moore}}
+\cfoot{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ------------------------------------------------------------------
+% Macros
+% ------------------------------------------------------------------
+\newcommand{\simM}{\sim_M}
+\newcommand{\simPhi}{\sim_\Phi}
+\newcommand{\hatPhi}{\hat{\Phi}}
+\newcommand{\WD}{\mathrm{WarrantDebt}}
+
+% ==================================================================
+\begin{document}
+% ==================================================================
+
+% ------------------------------------------------------------------
+% Title block
+% ------------------------------------------------------------------
+\begin{titlepage}
+\centering
+\vspace*{2cm}
+
+{\LARGE\bfseries Structural Admissibility in Rocq}\\[0.6em]
+{\large Warrant Debt, Observational Quotients, and Type-Theoretic Verification}
+
+\vspace{1.8cm}
+
+{\large Duston Moore}\\[0.3em]
+{\normalsize Independent Scholar}\\[0.2em]
+{\normalsize Edmonton, Alberta, Canada}\\[0.2em]
+{\normalsize \texttt{dhwcmoore@gmail.com} (corresponding author)}\\[0.2em]
+{\normalsize ORCID: \href{https://orcid.org/0009-0008-1103-9652}{0009-0008-1103-9652}}
+
+\vspace{1.5cm}
+
+{\normalsize Draft, \today}
+
+\vspace{2.5cm}
+
+\begin{abstract}
+\noindent
+Verification can fail before proof search begins. When the observation
+map of a verification system conflates states that a correctness
+predicate must distinguish, the verification question is malformed:
+the required information has already been destroyed by the
+observational quotient.
+
+We formalise this condition as admissibility. A predicate is admissible
+exactly when it factors through the equivalence relation induced by
+observation, or equivalently when the observation-induced quotient is
+fine enough to preserve the distinctions the predicate requires.
+
+For perturbation systems, we introduce warrant debt as the operational
+witness of admissibility failure: warrant debt occurs when algebraic
+observation treats two perturbations as equivalent while empirical
+evidence distinguishes them. The Warrant Debt Theorem is proved in
+Rocq: whenever warrant debt exists, the corresponding empirical
+tolerance predicate is not admissible.
+
+The mechanisation shows that inadmissibility is a prior proof
+obligation rather than a failure of proof search: verification must
+establish that the correctness predicate survives quotienting before
+proof search begins. The Rocq development fully proves the Warrant
+Debt Theorem, the monitor-as-evidence and conditional safety results,
+the concrete rupture decomposition theorem for the
+\texttt{SimpleSynergyCompose} instance, and the Non-Factorisation
+Theorem. The abstract composition theorem is stated at the interface
+level and is provable only for a concrete composition instance
+satisfying the required axioms. A higher-order extension to finite
+dependency families is presented as a proposed generalisation and
+is not part of the present mechanisation.
+\end{abstract}
+\vspace{0.8em}
+\noindent\textbf{Keywords:} Formal verification, Observational equivalence,
+Quotient semantics, Admissibility, Type theory, Rocq.
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+% ==================================================================
+\section{Introduction}
+\label{sec:intro}
+% ==================================================================
+
+The question is not whether a correctness predicate is true,
+but whether truth survives quotienting by the observation structure.
+
+Verification failure is commonly diagnosed as proof failure: the prover
+did not find a certificate, the invariant was too weak, or the
+abstraction was too coarse.
+This diagnosis is often wrong.
+
+Many failures are structural: the observation map has already collapsed
+the distinctions the correctness predicate requires before any proof
+attempt begins.
+In that situation, proof search is not merely difficult.
+The question it is attempting to answer is malformed.
+
+When an observation map $M : X \to O$ is not injective, distinct states
+share an observational image.
+The induced equivalence
+\[
+x \sim_M y \iff M(x) = M(y)
+\]
+partitions the state space, and a predicate
+\[
+\Phi : X \to \{0,1\}
+\]
+is \emph{admissible} with respect to $M$ if and only if it factors
+through that partition:
+\[
+\Phi = \hat{\Phi} \circ M
+\]
+for some
+\[
+\hat{\Phi} : O \to \{0,1\}.
+\]
+
+If $\Phi$ is not admissible, there exist states $x, y$ such that
+$M(x) = M(y)$ and $\Phi(x) \neq \Phi(y)$.
+No reasoning that operates within the observational regime can certify
+$\Phi$, because the regime has erased the distinction $\Phi$ requires.
+Inadmissibility is structural impossibility, not epistemic limitation.
+
+The problem belongs to quotient semantics, abstract interpretation,
+observational equivalence, and definability theory.
+The issue is not the expressive weakness of the prover; it is whether
+the observational quotient is fine enough to preserve the distinctions
+the predicate demands.
+
+In perturbation systems, this failure appears as
+\emph{warrant debt}: algebraic observation treats two perturbations as
+equivalent while empirical evidence distinguishes them.
+Warrant debt is therefore the concrete witness that admissibility has
+failed.
+
+Dependent type theory makes admissibility constraints explicit as proof
+obligations prior to theorem proving.
+The question is not whether a proof can be found, but whether the
+correctness predicate is even well-formed relative to the observation
+structure.
+The Rocq development presented here makes this precise: warrant debt
+is represented as a formal object, and the theorem that its existence
+implies non-admissibility is fully proved.
+
+\paragraph{Contributions.}
+Three results are established.
+The Factorisation Theorem (Section~\ref{sec:quotients}) characterises
+admissibility in three equivalent forms: factorisation through the
+observation map, constancy on observation-induced equivalence classes,
+and refinement of the correctness partition by the observational
+partition.
+It is the formal criterion against which all subsequent results are
+measured.
+The Warrant Debt Theorem (Section~\ref{sec:warrant}) proves that
+whenever empirical evidence distinguishes algebraically equivalent
+perturbations, the corresponding empirical tolerance predicate is not
+admissible; warrant debt is thus the operational witness of
+admissibility failure, and the theorem is fully mechanised in Rocq.
+The mechanisation (Sections~\ref{sec:type}--\ref{sec:composition})
+exhibits admissibility checking as a prior proof obligation preceding
+monitor correctness and compositional reasoning. A concrete rupture
+decomposition theorem is proved for the \texttt{SimpleSynergyCompose}
+instance, supplying the binary compositional witness, and the
+Non-Factorisation Theorem is established in the Rocq development. A
+higher-order extension to finite dependency families on $n$
+components is set out at the level of mathematical structure as a
+proposed generalisation; minimal support sets identify the smallest
+subsystems on which the global predicate genuinely depends. The
+higher-order theorem is not part of the present mechanisation.
+
+\paragraph{Scope.}
+This is a formal verification paper.
+Motivation is provided only where it identifies a formal problem.
+Metaphysical interpretation belongs to a separate paper in this
+programme.
+
+% ==================================================================
+\section{Observational Quotients and Admissibility}
+\label{sec:quotients}
+% ==================================================================
+
+This section states the abstract theorem of which all subsequent
+results are instances.
+No perturbation-specific machinery is required here.
+
+\subsection{Observation Maps and Observational Equivalence}
+
+Let $X$ be a non-empty set (the state space) and $O$ a non-empty set
+(the observation space).
+Let
+\[
+M : X \to O
+\]
+be a function, the \emph{observation map}; $M$ need not be injective.
+
+\begin{definition}[Observational Equivalence]
+The \emph{observational equivalence} induced by $M$ is
+\[
+x \sim_M y
+\;\stackrel{\mathrm{def}}{\iff}\;
+M(x) = M(y).
+\]
+This is an equivalence relation on $X$.
+
+Let $X/{\sim_M}$ denote the quotient and
+\[
+\pi : X \to X/{\sim_M}
+\]
+the canonical projection.
+
+There exists a unique injection
+\[
+\bar{M} : X/{\sim_M} \to O
+\]
+such that
+\[
+M = \bar{M} \circ \pi.
+\]
+\end{definition}
+
+The observational equivalence is the relevant object of study.
+Two states that $M$ cannot separate are, from the perspective of the
+verification system, identical.
+No predicate that respects the observation structure can distinguish
+them.
+
+\subsection{Admissible Predicates}
+
+\begin{definition}[Admissibility]
+\label{def:admissibility}
+
+Let
+\[
+\Phi : X \to \{0,1\}
+\]
+be a correctness predicate.
+
+$\Phi$ is \emph{admissible with respect to $M$} if and only if there
+exists
+\[
+\widetilde{\Phi} : X/{\sim_M} \to \{0,1\}
+\]
+such that
+\[
+\Phi = \widetilde{\Phi} \circ \pi.
+\]
+
+That is, $\Phi$ must factor through the quotient induced by
+observational equivalence.
+
+Equivalently, since
+\[
+M = \bar{M} \circ \pi,
+\]
+admissibility is equivalent to factorisation through the observation
+map itself: there exists
+\[
+\hat{\Phi} : O \to \{0,1\}
+\]
+such that
+\[
+\Phi = \hat{\Phi} \circ M.
+\]
+\end{definition}
+
+The quotient is primary.
+The codomain $O$ matters only because the observation map induces the
+equivalence relation that defines the quotient.
+Verification is therefore governed not by the observation values
+themselves, but by the partition they impose on the state space.
+
+\subsection{The Factorisation Theorem}
+
+\begin{theorem}[Factorisation]
+\label{thm:factorisation}
+
+The following conditions are equivalent.
+
+\begin{enumerate}[label=(\arabic*),noitemsep]
+  \item $\Phi$ is admissible with respect to $M$.
+
+  \item $\Phi$ is constant on $\sim_M$-equivalence classes:
+        \[
+        M(x) = M(y)
+        \;\Rightarrow\;
+        \Phi(x) = \Phi(y).
+        \]
+
+  \item The observational equivalence refines the predicate
+        equivalence:
+        \[
+        \sim_M \subseteq \sim_{\Phi},
+        \]
+        where
+        \[
+        x \sim_{\Phi} y
+        \;\stackrel{\mathrm{def}}{\iff}\;
+        \Phi(x) = \Phi(y).
+        \]
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+
+$(1)\Rightarrow(2)$:
+If
+\[
+\Phi = \hat{\Phi} \circ M
+\]
+and
+\[
+M(x) = M(y),
+\]
+then
+\[
+\Phi(x)
+=
+\hat{\Phi}(M(x))
+=
+\hat{\Phi}(M(y))
+=
+\Phi(y).
+\]
+
+$(2)\Rightarrow(3)$:
+If
+\[
+x \sim_M y,
+\]
+then
+\[
+M(x) = M(y),
+\]
+so by (2),
+\[
+\Phi(x) = \Phi(y),
+\]
+hence
+\[
+x \sim_{\Phi} y.
+\]
+Therefore
+\[
+\sim_M \subseteq \sim_{\Phi}.
+\]
+
+$(3)\Rightarrow(1)$:
+Since
+\[
+\sim_M \subseteq \sim_{\Phi},
+\]
+the assignment
+\[
+\widetilde{\Phi}([x]_M) = \Phi(x)
+\]
+is well-defined on the quotient
+\[
+X/{\sim_M}.
+\]
+Thus
+\[
+\Phi = \widetilde{\Phi} \circ \pi.
+\]
+
+Extending $\widetilde{\Phi}$ along $\bar{M}$ yields the equivalent
+factorisation through $O$.
+\end{proof}
+
+Theorem~\ref{thm:factorisation} is the spine of the paper.
+
+A predicate is decidable from observation if and only if the
+observation-induced partition is fine enough to respect the
+predicate's partition.
+
+If the observational equivalence is too coarse, no argument about the
+predicate can recover what the quotient has already destroyed.
+
+\subsection{Saturation}
+
+\begin{definition}[Saturation]
+
+A set
+\[
+S \subseteq X
+\]
+is $M$-\emph{saturated} if for all
+\[
+x \in S
+\quad\text{and}\quad
+y \in X,
+\]
+\[
+M(x) = M(y)
+\;\Rightarrow\;
+y \in S.
+\]
+
+That is, $S$ is a union of $\sim_M$-equivalence classes.
+\end{definition}
+
+\begin{corollary}[Saturation Criterion]
+\label{cor:saturation}
+
+$\Phi$ is admissible with respect to $M$ if and only if
+\[
+\Phi^{-1}(1)
+\]
+is $M$-saturated.
+\end{corollary}
+
+\begin{proof}
+
+Admissibility holds if and only if no $\sim_M$-equivalence class
+straddles the boundary between
+\[
+\Phi^{-1}(1)
+\quad\text{and}\quad
+\Phi^{-1}(0).
+\]
+
+This holds if and only if
+\[
+\Phi^{-1}(1)
+\]
+is a union of $\sim_M$-classes, which is exactly the definition of
+$M$-saturation.
+\end{proof}
+
+\subsection{Inadmissibility as Structural Impossibility}
+
+When $\Phi$ is not admissible, there exist
+\[
+x, y \in X
+\]
+such that
+\[
+M(x) = M(y)
+\quad\text{and}\quad
+\Phi(x) \neq \Phi(y).
+\]
+
+The pair $(x,y)$ is an inadmissibility witness.
+
+No predicate that factors through the current observation map can
+recover this distinction while that observational regime remains fixed.
+The quotient
+\[
+X/{\sim_M}
+\]
+has already collapsed the distinction that $\Phi$ requires.
+
+Inadmissibility is not epistemic ignorance.
+It is structural impossibility.
+
+The failure lies in the representational regime itself, not in the
+strength of the prover operating within it.
+
+\subsection{Literature Placement}
+\label{subsec:literature}
+
+Theorem~\ref{thm:factorisation} is a definability result.
+Its connections to the literature are structural.
+
+In abstract interpretation~\cite{cousot1977,cousot1979}, a Galois
+connection $(\alpha,\gamma)$ relates concrete and abstract domains;
+a property survives abstraction only if the abstract domain is fine
+enough to preserve the required distinctions~\cite{cousot2002,giacobazzi1998}.
+The quotient $X/{\sim_M}$ is the abstract domain.
+Inadmissibility is the case in which the abstraction is too coarse
+and the required distinction has been irreversibly erased.
+
+Beth's theorem~\cite{beth1953} establishes that implicit and explicit
+definability coincide in first-order logic.
+In the present setting there is a fixed observation map rather than a
+first-order theory, and the observation-induced equivalence plays the
+role of the theory's indistinguishability relation.
+A predicate is definable in the relevant sense if and only if the
+quotient is fine enough to preserve its partition~\cite{hodges1993}.
+
+Two structures are elementarily equivalent if and only if the
+Duplicator wins the Ehrenfeucht--Fra\"{i}ss\'{e} game of all finite
+lengths~\cite{ehrenfeucht1961,fraisse1954}.
+The relation $\sim_M$ is the observational analogue: two states are
+$\sim_M$-equivalent when no observation separates them.
+Inadmissibility is the corresponding structural result: collapse of
+the observational quotient forces indistinguishability between states
+that the correctness predicate must separate~\cite{libkin2004}.
+
+Milner's observational equivalence~\cite{milner1980,milner1989}
+identifies processes that no context can distinguish by observable
+actions.
+Observation maps play the role of contexts, and the admissibility
+condition is the verification analogue of contextual
+equivalence~\cite{sangiorgi2011}.
+
+% ==================================================================
+\section{Concrete Perturbation Space}
+\label{sec:perturbations}
+% ==================================================================
+
+The abstract framework of Section~\ref{sec:quotients} is instantiated
+here.
+
+The observation map $M$ becomes an algebraic observation map over
+perturbations: it preserves carrier class and magnitude while
+discarding emergent boundary information.
+
+The correctness predicates $\Phi$ become tolerance predicates over
+interface regions.
+
+This section introduces only the formal objects required for the
+Warrant Debt Theorem of Section~\ref{sec:warrant}; nothing here is
+independent of that purpose.
+
+% ------------------------------------------------------------------
+\subsection{Boundary Type Classification}
+% ------------------------------------------------------------------
+
+\begin{definition}[Boundary Types]
+
+A perturbation is classified by one of three boundary types.
+
+\begin{enumerate}[label=(\roman*),noitemsep]
+    \item \texttt{INV} (invariant):
+    tolerance conditions are fully determined at design time by
+    algebraic structure;
+
+    \item \texttt{REL} (relational):
+    tolerance conditions vary within bounded and certifiable limits;
+
+    \item \texttt{EMG} (emergent):
+    tolerance conditions depend on information that cannot be
+    recovered from the algebraic observation kernel alone.
+\end{enumerate}
+
+The distinction is representational rather than merely descriptive:
+\texttt{EMG} marks precisely the case in which algebraic observation
+is structurally insufficient.
+
+\end{definition}
+
+\begin{lstlisting}[style=rocq,
+caption={Boundary types and perturbation record.}]
+Inductive BType : Type :=
+  | INV  (* invariant: structurally determined *)
+  | REL  (* relational: bounded, variable      *)
+  | EMG. (* emergent: observationally lost     *)
+
+Record Perturbation := mkPerturbation {
+  p_btype     : BType;
+  p_carrier   : CarrierClass;
+  p_magnitude : Interval;
+  p_mode      : nat
+}.
+\end{lstlisting}
+
+The \texttt{Interval} type carries a proof of well-formedness
+$\ell \leq h$, so every magnitude is represented as a certified
+interval rather than an uncertified real pair.
+
+A structural consequence used later is that \texttt{EMG} is the top
+element under composition: if either component is emergent, the
+composition is emergent.
+Composition cannot eliminate emergent character.
+
+% ------------------------------------------------------------------
+\subsection{Tolerance Predicates}
+% ------------------------------------------------------------------
+
+\begin{definition}[Tolerance Predicates]
+
+A tolerance predicate specifies whether an interface region can absorb
+a perturbation without violating its safety boundary.
+Two forms are distinguished: formal tolerance, decided at design time
+by a Boolean procedure; and empirical tolerance, indexed by evidence
+such as sealed monitoring logs or certified test records.
+
+\end{definition}
+
+\begin{lstlisting}[style=rocq,
+caption={Tolerance predicates.}]
+Definition TolPredicate := Perturbation -> Prop.
+
+Definition formal_tol (dec : Perturbation -> bool)
+  : TolPredicate :=
+  fun p => dec p = true.
+
+Parameter Evidence : Type.
+Parameter empirical_tol : Evidence -> TolPredicate.
+\end{lstlisting}
+
+The type \texttt{Evidence} is left abstract.
+The results of Section~\ref{sec:warrant} do not depend on the internal
+structure of evidence, only on the fact that empirical tolerance may
+distinguish perturbations that algebraic observation treats as
+equivalent.
+
+This gap is the source of warrant debt.
+
+% ------------------------------------------------------------------
+\subsection{Rupture}
+% ------------------------------------------------------------------
+
+\begin{definition}[Rupture]
+\label{def:rupture}
+
+A perturbation $p$ \emph{ruptures} tolerance predicate
+\texttt{tol} when
+
+\[
+\neg\,\mathtt{tol}(p).
+\]
+
+\end{definition}
+
+\begin{lstlisting}[style=rocq,
+caption={Rupture.}]
+Definition Rupture
+  (tol : TolPredicate)
+  (p : Perturbation) : Prop :=
+  ~ tol p.
+\end{lstlisting}
+
+Rupture is not a property of the perturbation alone.
+It is a relation between a perturbation and a tolerance predicate.
+
+Changing the predicate changes what counts as rupture.
+
+This matters because detectability depends not only on whether rupture
+occurs, but on whether the tolerance predicate itself is admissible
+with respect to the observation structure.
+Section~\ref{sec:warrant} makes this precise.
+
+% ==================================================================
+\section{Algebraic Observation and Warrant Debt}
+\label{sec:warrant}
+% ==================================================================
+
+This section is the formal centre of the paper.
+
+Section~\ref{sec:quotients} established the abstract admissibility
+criterion: a predicate is admissible if and only if the observational
+equivalence induced by the observation map is fine enough to preserve
+the distinctions the predicate requires.
+
+This section is the concrete instance of that criterion for
+perturbation systems.
+
+The algebraic observation map plays the role of $M$; \texttt{alg\_equiv}
+plays the role of $\sim_M$; and \texttt{PredAdmissible} is the
+perturbation-level factorisation condition of
+Theorem~\ref{thm:factorisation}.
+
+% ------------------------------------------------------------------
+\subsection{The Algebraic Observation Map}
+% ------------------------------------------------------------------
+
+The algebraic observation map strips emergent boundary information.
+
+Two perturbations are algebraically equivalent when they agree on
+carrier class and magnitude and both belong to the algebraically
+observable fragment of the system.
+
+\begin{lstlisting}[style=rocq,
+caption={Algebraic equivalence and predicate admissibility.}]
+Definition btype_algebraic (b : BType) : bool :=
+  match b with
+  | INV => true
+  | REL => true
+  | EMG => false
+  end.
+
+Definition alg_equiv (p q : Perturbation) : Prop :=
+  p_carrier p   = p_carrier q /\
+  p_magnitude p = p_magnitude q /\
+  btype_algebraic (p_btype p) = true /\
+  btype_algebraic (p_btype q) = true.
+
+Definition PredAdmissible
+  (P : Perturbation -> Prop) : Prop :=
+  forall p q : Perturbation,
+    alg_equiv p q -> (P p <-> P q).
+\end{lstlisting}
+
+\begin{definition}[Observational Admissibility in Perturbation Space]
+\label{def:pred-admissible}
+
+A predicate $P$ is \emph{admissible} with respect to the algebraic
+observation map if and only if it is invariant under
+\texttt{alg\_equiv}: $P$ cannot distinguish perturbations that the
+algebraic kernel cannot distinguish.
+
+This is the perturbation-level realisation of condition~(2) of
+Theorem~\ref{thm:factorisation}:
+\[
+M(x) = M(y)
+\;\Rightarrow\;
+\Phi(x) = \Phi(y).
+\]
+
+\end{definition}
+
+Emergent perturbations lie outside the algebraic observation domain
+entirely:
+\[
+\texttt{btype\_algebraic(p\_btype q) = false}
+\]
+whenever
+\[
+\texttt{p\_btype q = EMG}.
+\]
+
+The algebraic kernel therefore forms no equivalence class containing
+an emergent perturbation.
+
+Any predicate that separates an algebraic perturbation from an
+emergent one witnesses information that the kernel destroys.
+
+% ------------------------------------------------------------------
+\subsection{Warrant Equivalence}
+% ------------------------------------------------------------------
+
+\begin{definition}[Warrant Equivalence]
+
+Perturbations $p$ and $q$ are \emph{warrant-equivalent} with respect
+to evidence $e$ when empirical tolerance treats them identically:
+
+\[
+\mathtt{warrant\_equiv}(e,p,q)
+\;\stackrel{\mathrm{def}}{\iff}\;
+\Bigl(
+\mathtt{empirical\_tol}(e,p)
+\leftrightarrow
+\mathtt{empirical\_tol}(e,q)
+\Bigr).
+\]
+
+\end{definition}
+
+\begin{lstlisting}[style=rocq,
+caption={Warrant equivalence.}]
+Definition warrant_equiv
+  (e : Evidence)
+  (p q : Perturbation) : Prop :=
+  empirical_tol e p <-> empirical_tol e q.
+\end{lstlisting}
+
+Warrant equivalence is the empirical counterpart of algebraic
+equivalence.
+
+Algebraic equivalence records what the formal certification
+infrastructure treats as the same perturbation.
+
+Warrant equivalence records what the empirical evidence treats as the
+same perturbation.
+
+Warrant debt arises precisely when these two notions of sameness
+disagree.
+
+% ------------------------------------------------------------------
+\subsection{Warrant Debt}
+% ------------------------------------------------------------------
+
+\begin{definition}[Warrant Debt]
+\label{def:warrant-debt}
+
+A \emph{warrant debt} exists between perturbations $p$ and $q$ with
+respect to evidence $e$ when they are algebraically equivalent but not
+warrant-equivalent:
+
+\[
+\WD(e,p,q)
+\;\stackrel{\mathrm{def}}{\iff}\;
+\mathtt{alg\_equiv}(p,q)
+\;\wedge\;
+\neg\,\mathtt{warrant\_equiv}(e,p,q).
+\]
+
+\end{definition}
+
+\begin{lstlisting}[style=rocq,
+caption={Warrant debt.}]
+Definition WarrantDebt
+  (e : Evidence)
+  (p q : Perturbation) : Prop :=
+  alg_equiv p q /\ ~ warrant_equiv e p q.
+\end{lstlisting}
+
+A $\WD(e,p,q)$ is the formal witness that the observational regime is
+too coarse.
+
+The algebraic certification infrastructure treats $p$ and $q$ as
+equivalent, while the evidence record distinguishes them.
+
+Admissibility therefore fails at the level of representation itself:
+the system is attempting to certify a predicate that its own
+observation structure cannot support.
+
+% ------------------------------------------------------------------
+\subsection{The Warrant Debt Theorem}
+\label{subsec:wdt}
+% ------------------------------------------------------------------
+
+\begin{theorem}[Warrant Debt Implies Non-Admissibility]
+\label{thm:wdt}
+
+For any evidence $e$ and perturbations $p$ and $q$,
+
+\[
+\WD(e,p,q)
+\;\Rightarrow\;
+\neg\,
+\mathtt{PredAdmissible}
+\bigl(
+\mathtt{empirical\_tol}(e)
+\bigr).
+\]
+
+\end{theorem}
+
+\begin{proof}
+
+Suppose
+\[
+\WD(e,p,q).
+\]
+
+Then
+\[
+\mathtt{alg\_equiv}(p,q)
+\]
+and
+\[
+\neg\,\mathtt{warrant\_equiv}(e,p,q).
+\]
+
+Assume for contradiction that
+
+\[
+\mathtt{PredAdmissible}
+\bigl(
+\mathtt{empirical\_tol}(e)
+\bigr).
+\]
+
+By Definition~\ref{def:pred-admissible}, admissibility requires that
+algebraically equivalent perturbations cannot be separated by the
+predicate.
+
+Hence
+\[
+\mathtt{alg\_equiv}(p,q)
+\]
+implies
+
+\[
+\mathtt{empirical\_tol}(e,p)
+\leftrightarrow
+\mathtt{empirical\_tol}(e,q),
+\]
+
+which is exactly
+
+\[
+\mathtt{warrant\_equiv}(e,p,q).
+\]
+
+This is the contradiction.
+Admissibility forces warrant equivalence, while warrant debt asserts
+its negation.
+Both cannot hold simultaneously.
+
+\end{proof}
+
+The Rocq mechanisation is fully proved:
+
+\begin{lstlisting}[style=rocq,
+caption={Warrant Debt Theorem, fully proved in Rocq.}]
+Theorem warrant_debt_implies_non_admissible :
+  forall (e : Evidence)
+         (p q : Perturbation),
+  WarrantDebt e p q ->
+  ~ PredAdmissible (empirical_tol e).
+Proof.
+  intros e p q [Hequiv Hne_warrant] Hadm.
+  apply Hne_warrant.
+  unfold PredAdmissible in Hadm.
+  exact (Hadm p q Hequiv).
+Qed.
+\end{lstlisting}
+
+The proof is four lines.
+Its brevity reflects the precision of the definitions: the mathematics
+is in the definitions, not in the proof scripts.
+A correct formalisation makes the theorem transparent; a bloated one
+obscures it.
+
+The engineering consequence is immediate.
+If a warrant debt can be exhibited, the system is operating with an
+inadmissible observational regime.
+More proof cannot repair representational failure.
+The correct response is not stronger proof search, but refinement of
+the observation map until admissibility is restored, or formal
+recognition that the target predicate is not verifiable within the
+current regime.
+
+\paragraph{Connection to Theorem~\ref{thm:factorisation}.}
+
+The Warrant Debt Theorem is the concrete instance of the Factorisation
+Theorem for perturbation systems.
+
+\texttt{alg\_equiv} is the induced equivalence $\sim_M$.
+
+\texttt{PredAdmissible} is the factorisation condition.
+
+The pair $(p,q)$ with $\WD(e,p,q)$ is the inadmissibility witness of
+Theorem~\ref{thm:factorisation}: two states the observation map
+conflates that the predicate must separate.
+
+The implication of Theorem~\ref{thm:wdt} is the perturbation-level
+form of condition~(2) in Theorem~\ref{thm:factorisation}.
+
+These are not two theorems.
+They are one theorem at two levels of abstraction.
+
+% ==================================================================
+\section{Type-Level Realisation}
+\label{sec:type}
+% ==================================================================
+
+This section shows how admissibility appears as a proof obligation
+inside dependent type theory.
+
+The type structure does not replace the mathematics; it exhibits the
+same obligations in machine-checkable form.
+Refinement of observation corresponds to refinement of the formal
+objects through which verification proceeds.
+
+Theorem~\ref{thm:wdt} established that warrant debt implies
+non-admissibility.
+The present section states the operational consequence: before proving
+a predicate, one must first establish that the predicate is
+well-formed relative to the available observation structure.
+
+% ------------------------------------------------------------------
+\subsection{Observational Refinement as Product Extension}
+% ------------------------------------------------------------------
+
+When a predicate $\Phi$ is inadmissible with respect to an observation
+map $M_i$, the corrective is not stronger proof search but
+observational refinement: introduce an auxiliary observation that
+separates the inadmissibility witnesses.
+
+\begin{definition}[Observational Refinement]
+
+Let
+\[
+M_i : X \to O_i.
+\]
+
+An \emph{observational refinement} of $M_i$ is a map
+
+\[
+M_{i+1} : X \to O_{i+1}
+\]
+
+such that
+
+\[
+x \sim_{M_{i+1}} y
+\;\Rightarrow\;
+x \sim_{M_i} y.
+\]
+
+That is, the refined observation induces a strictly finer partition.
+Equivalently,
+
+\[
+M_{i+1} = (M_i, N_i)
+\]
+
+for some auxiliary observation
+
+\[
+N_i : X \to F_i,
+\]
+
+so that
+
+\[
+O_{i+1} \cong O_i \times F_i.
+\]
+
+\end{definition}
+
+\begin{proposition}[Product Decomposition]
+\label{prop:product}
+
+If
+
+\[
+M_{i+1} = (M_i, N_i)
+\]
+
+is an observational refinement, then
+
+\[
+O_{i+1} \cong O_i \times F_i,
+\]
+
+and the projection
+
+\[
+\pi_1 : O_{i+1} \to O_i
+\]
+
+satisfies
+
+\[
+M_i = \pi_1 \circ M_{i+1}.
+\]
+
+The refined observation reduces to the original by projection.
+
+\end{proposition}
+
+Each refinement step therefore extends the type of the observation
+space by a product factor.
+The projection $\pi_1$ corresponds exactly to forgetting the new
+factor.
+
+Refinement is not replacement.
+It is conservative extension: the old observation remains recoverable
+by projection, while the new factor provides the separation required
+to eliminate inadmissibility.
+
+% ------------------------------------------------------------------
+\subsection{Type Structure and Proof Obligations}
+% ------------------------------------------------------------------
+
+Type structure enforces the projection and refinement obligations
+corresponding to Theorem~\ref{thm:factorisation}.
+
+The issue is not whether a proof can be found, but whether the
+predicate is even well-formed relative to the observation structure.
+
+A predicate admissible with respect to $M_i$ can be stated without
+appeal to distinctions outside the partition induced by $M_i$.
+A non-admissible predicate cannot: any attempt to verify it requires
+appealing to a finer partition, which is exactly the formal signal that
+the observation map must be refined.
+
+In the Rocq development, $\mathtt{PredAdmissible}(P)$ is the explicit
+proof obligation that must be discharged before verification of a
+tolerance predicate may proceed.
+If it cannot be discharged, the observation map must be refined by
+product extension as in Proposition~\ref{prop:product}, or it must be
+formally certified that $P$ is not verifiable within the current
+regime.
+Only after admissibility is established does proof search for $P$
+begin.
+
+This ordering is not a recommendation about proof strategy.
+It is a structural consequence of Theorem~\ref{thm:wdt}.
+
+Warrant debt proves that proof search inside an inadmissible
+observational regime is not incomplete but misdirected: the system is
+attempting to certify a predicate its own representation cannot
+support.
+
+% ==================================================================
+\section{Composition and Rupture Decomposition}
+\label{sec:composition}
+% ==================================================================
+
+\subsection{Composition Signature}
+
+Composition is expressed as a Rocq module type.
+A compliant operator must satisfy three axioms: emergent type
+propagation, magnitude monotonicity, and a bridge between composite
+rupture and its sources.
+
+\begin{lstlisting}[style=rocq,
+caption={Abstract composition module signature.}]
+Module Type COMPOSITION_SIG.
+  Parameter par_compose :
+    Perturbation -> Perturbation -> Perturbation.
+
+  Parameter synergy_debt :
+    Perturbation -> Perturbation -> Prop.
+
+  Axiom compose_btype_emg :
+    forall p q,
+    p_btype p = EMG \/ p_btype q = EMG ->
+    p_btype (par_compose p q) = EMG.
+
+  Axiom compose_magnitude_ub :
+    forall p q,
+      (iv_hi (p_magnitude p) <= iv_hi (p_magnitude (par_compose p q)))%R /\
+      (iv_hi (p_magnitude q) <= iv_hi (p_magnitude (par_compose p q)))%R.
+
+  Axiom rupture_synergy_bridge :
+    forall (tol : TolPredicate) (p q : Perturbation),
+    Rupture tol (par_compose p q) ->
+    Rupture tol p \/ Rupture tol q \/ synergy_debt p q.
+End COMPOSITION_SIG.
+\end{lstlisting}
+
+\begin{definition}[Interaction Debt, Binary Case]
+\label{def:synergy-debt}
+
+Two perturbations incur \emph{interaction debt} (in this binary instance
+also called \emph{synergy debt}) when both are individually tolerated
+under a predicate, yet their composition ruptures under that same
+predicate.
+The binary case names the lowest non-trivial level of the interaction
+debt hierarchy and is not reducible to component-level failure.
+The general hierarchy, which classifies interaction debt by the size
+of the minimal support set on which inadmissibility arises, is
+developed in Section~\ref{subsec:higher-order}.
+
+\end{definition}
+
+\subsection{Proved Rupture Decomposition}
+
+The concrete module \texttt{SimpleSynergyCompose} satisfies the axioms
+of \texttt{COMPOSITION\_SIG} with full proofs.
+The rupture decomposition is therefore established constructively.
+
+\begin{theorem}[Rupture Decomposition]
+\label{thm:rupture}
+
+For any tolerance predicate $\mathtt{tol}$ and perturbations $p$, $q$,
+
+\[
+\mathrm{Rup}(\mathtt{tol},\, \mathtt{par\_compose}(p,q))
+\;\Rightarrow\;
+\mathrm{Rup}(\mathtt{tol}, p)
+\;\vee\;
+\mathrm{Rup}(\mathtt{tol}, q)
+\;\vee\;
+\mathtt{synergy\_debt}(p, q).
+\]
+
+\end{theorem}
+
+\begin{lstlisting}[style=rocq,
+caption={Proved rupture decomposition.}]
+Lemma rupture_synergy_bridge :
+  forall (tol : TolPredicate) (p q : Perturbation),
+  Rupture tol (par_compose p q) ->
+  Rupture tol p \/ Rupture tol q \/ synergy_debt p q.
+Proof.
+  intros tol p q Hrup.
+  destruct (classic (tol p)) as [Hp | Hnp].
+  - destruct (classic (tol q)) as [Hq | Hnq].
+    + right. right. unfold synergy_debt. exists tol.
+      exact (conj Hp (conj Hq Hrup)).
+    + right. left. exact Hnq.
+  - left. exact Hnp.
+Qed.
+
+Theorem rupture_decomposition_proved :
+  forall (tol : TolPredicate) (p q : Perturbation),
+  Rupture tol (SimpleSynergyCompose.par_compose p q) ->
+  Rupture tol p \/ Rupture tol q \/
+  (exists tol' : TolPredicate,
+    tol' p /\ tol' q /\
+    Rupture tol' (SimpleSynergyCompose.par_compose p q)).
+Proof.
+  intros tol p q Hrup.
+  exact (SimpleSynergyCompose.rupture_synergy_bridge tol p q Hrup).
+Qed.
+\end{lstlisting}
+
+The third disjunct identifies the interaction term: both components
+satisfy a tolerance predicate, yet their composition violates it.
+Interaction debt at the binary level is therefore not residual; it is
+a named and typed obligation.
+
+The role of Theorem~\ref{thm:rupture} is compositional.
+Where Theorem~\ref{thm:wdt} identifies failure of admissibility at the
+level of a single predicate, Theorem~\ref{thm:rupture} identifies the
+sources of failure in composed systems for the binary case.
+A composite rupture on two components decomposes into certified local
+failures or a single binary interaction term.
+The binary formulation is, however, only the first non-trivial case of
+a hierarchy.
+For systems with three or more components, a single residual
+interaction term is no longer sufficient: it records that some debt
+exists without identifying the minimal locus of failure.
+Section~\ref{subsec:higher-order} develops the corresponding hierarchy.
+
+% ------------------------------------------------------------------
+\subsection{Granular Synergy and Higher-Order Warrant Debt}
+\label{subsec:higher-order}
+% ------------------------------------------------------------------
+
+The binary formulation of rupture decomposition is only the first
+non-trivial case.
+In general, for a system with component family
+$
+C = \{C_1,\dots,C_n\}
+$,
+global inadmissibility cannot be reduced to a single residual
+interaction term without loss of explanatory force.
+Such a residual merely records that some interaction debt exists; it
+does not identify the minimal locus of failure.
+
+The correct generalisation is hierarchical.
+For each non-empty subset
+$
+S \subseteq C
+$,
+let
+$
+\Sigma_S
+$
+denote the warrant debt associated with the interaction structure of
+the components in $S$, namely the failure of the global predicate to
+factor through the observation map restricted to that subsystem.
+Then local failure is the case $|S| = 1$, pairwise interaction debt
+is the case $|S| = 2$ recovered by Theorem~\ref{thm:rupture}, triple
+interaction debt the case $|S| = 3$, and so forth.
+
+Accordingly, global rupture admits the decomposition
+\[
+\Phi_{\mathrm{global}}
+\;=\;
+\bigvee_{S \subseteq C,\; S \neq \varnothing}
+\Sigma_S,
+\]
+where the operative question is not merely whether some
+$
+\Sigma_S
+$
+is non-zero, but which subsets $S$ are minimal witnesses of
+inadmissibility.
+
+\begin{definition}[Dependency Family and Minimal Support]
+\label{def:dependency-family}
+
+The \emph{dependency family} of a global predicate $\Phi$ over the
+component family $C$ is
+\[
+\mathcal{D}(\Phi)
+\;=\;
+\{\,S \subseteq C
+\mid
+\Phi \text{ requires } S \text{ for admissibility}\,\}.
+\]
+A subset $S \in \mathcal{D}(\Phi)$ is a \emph{minimal support set}
+when no proper subset of $S$ lies in $\mathcal{D}(\Phi)$.
+The minimal elements of $\mathcal{D}(\Phi)$ identify the smallest
+subsystems on which $\Phi$ genuinely depends.
+
+\end{definition}
+
+A predicate may be admissible on every proper projection of size less
+than $k$, yet fail to be admissible on the full system.
+This is genuine $k$-th order synergy, not reducible to lower-order
+interaction.
+
+\begin{theorem}[Higher-Order Warrant Debt]
+\label{thm:higher-order}
+
+Let $\Phi$ be a global predicate on a component family
+$C = \{C_1,\dots,C_n\}$ with admissibility-induced dependency family
+$\mathcal{D}(\Phi)$.
+If $\Phi$ is inadmissible relative to the observation map on $C$, and
+if for every proper subset $S' \subsetneq S$ of size strictly less than
+some $k \leq n$ the projected predicate $\Phi|_{S'}$ is admissible,
+then there exists a minimal support set $S^* \in \mathcal{D}(\Phi)$
+with $|S^*| \geq k$.
+The set $S^*$ is the smallest subsystem on which higher-order warrant
+debt arises, and it is the minimal witness of inadmissibility.
+
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+By the Factorisation Theorem (Section~\ref{sec:quotients}),
+inadmissibility of $\Phi$ is equivalent to the existence of a pair of
+global states identified by the observation map but separated by
+$\Phi$.
+Project that pair onto every subset $S \subseteq C$.
+The collection of subsets on which the projected pair remains separated
+forms an upward-closed family inside the powerset lattice of $C$;
+its minimal elements are the minimal support sets of $\mathcal{D}(\Phi)$.
+By hypothesis, no subset of size less than $k$ lies in this family, so
+every minimal element has cardinality at least $k$.
+Pick any such minimal element $S^*$.
+By construction $\Phi|_{S^*}$ is inadmissible while $\Phi|_{S'}$ is
+admissible for every $S' \subsetneq S^*$, so $S^*$ is a minimal
+witness of inadmissibility at order $|S^*|$.
+\end{proof}
+
+\begin{remark}[Mechanisation status]
+The binary case $k = 2$ is the content of Theorem~\ref{thm:rupture}
+and is fully mechanised in Rocq via
+\texttt{rupture\_synergy\_bridge} for the concrete
+\texttt{SimpleSynergyCompose} instance.
+The general case is established here at the level of mathematical
+structure and is presented as a proposed extension to the present
+development. A Rocq mechanisation parameterised over the cardinality
+of $C$ would reduce to the lattice structure of the powerset of $C$,
+but it is outside the scope of the present formalisation, which
+proves only the binary concrete instance.
+\end{remark}
+
+\begin{remark}[Significance for industrial systems]
+The significance is practical as well as formal.
+In industrial systems, all local indicators may remain within
+tolerance, and every pairwise relation may appear acceptable, while
+the joint configuration violates a global invariant.
+Pressure, temperature, compressor lag, and flow timing may each be
+locally benign yet jointly inadmissible.
+Such failures are invisible to anomaly detection understood as local
+deviation, but they are precisely what admissibility theory detects.
+\end{remark}
+
+\subsection{Bridge Theorem and Audit Interpretation}
+\label{subsec:bridge}
+
+The bridge from rupture to audit therefore requires classification
+rather than mere existential detection.
+The bridge result must identify not only that interaction debt exists,
+but the minimal support set on which it arises.
+Only then can verification terminate in assignable warrant debt:
+which observational boundary failed, which refinement is required,
+and which institutional responsibility is implicated.
+
+\begin{corollary}[Strengthened Rupture-to-Synergy Bridge]
+\label{cor:bridge}
+
+If a global predicate $\Phi$ on the component family $C$ ruptures, and
+if no lower-order interaction debt of order strictly less than $k$
+suffices to witness this rupture, then the rupture implies the
+existence of a minimal support set $S^* \in \mathcal{D}(\Phi)$ of
+order at least $k$ that witnesses higher-order warrant debt.
+
+\end{corollary}
+
+This is stronger than the binary bridge axiom of
+Section~\ref{sec:composition}, which records existential interaction
+debt without classifying its order.
+The strengthened formulation converts a rhetorical remainder into a
+formal object: the minimal witness of inadmissibility, located at a
+definite level of the dependency hierarchy.
+
+Together, the three results (Theorem~\ref{thm:wdt},
+Theorem~\ref{thm:rupture}, and Theorem~\ref{thm:higher-order}) separate
+distinct failure modes.
+Of these, the first two are fully mechanised in Rocq for the concrete
+\texttt{SimpleSynergyCompose} instance, while the third is established
+here at the level of mathematical structure and is identified in
+Section~\ref{sec:boundary} as a proposed extension of the Rocq
+development.
+Representational failure, certified by warrant debt, requires
+refinement of the observation map.
+Compositional failure, certified at the binary level by rupture
+decomposition and at higher orders by minimal support sets within the
+dependency family, is analysed within a fixed observational regime.
+The distinction is structural: refinement cannot eliminate higher-order
+warrant debt, and composition cannot repair inadmissibility.
+
+% ==================================================================
+\section{Mechanisation Boundary}
+\label{sec:boundary}
+% ==================================================================
+
+The principal non-factorisation result is now fully proved in the Rocq
+development.
+In particular, the theorem \texttt{no\_alg\_factorisation},
+established in \texttt{bdgi\_perturbation.v} and ported into the
+canonical development file \texttt{bdgi\_perturbation\_proved.v},
+establishes by explicit witness construction that the rupture
+predicate cannot factor through the algebraic quotient induced by
+\texttt{alg\_equiv}.
+This discharges the earlier conjectural status of non-factorisation
+and makes precise the claim that observational indistinguishability is
+a structural rather than merely epistemic limitation.
+
+% ------------------------------------------------------------------
+\begin{theorem}[Non-Factorisation]
+\label{thm:nonfact}
+
+There is no algebraic homomorphism
+
+\[
+f :
+\mathtt{Perturbation}
+\to
+\mathtt{AlgPerturbation}
+\]
+
+that preserves rupture for every tolerance predicate.
+
+Equivalently, no total projection from the full perturbation space to
+its algebraically observable fragment can preserve rupture behaviour
+in general.
+
+\end{theorem}
+
+\begin{lstlisting}[style=rocq,
+caption={Non-factorisation type signature.}]
+Definition AlgPerturbation :=
+  { p : Perturbation |
+    btype_algebraic (p_btype p) = true }.
+
+Definition AlgHom :=
+  Perturbation -> AlgPerturbation.
+
+Definition proj_alg (ap : AlgPerturbation) : Perturbation :=
+  proj1_sig ap.
+
+Definition RupturePreserving
+  (f : AlgHom)
+  (tol : TolPredicate) : Prop :=
+  forall p : Perturbation,
+    Rupture tol p <->
+    Rupture tol (proj_alg (f p)).
+\end{lstlisting}
+
+The Rocq proof fixes an arbitrary $f : \mathtt{AlgHom}$ and an
+emergent perturbation $p_0$ with
+$\mathtt{p\_btype}(p_0) = \mathtt{EMG}$, then constructs a witness
+tolerance predicate that holds on every algebraic perturbation and
+fails at $p_0$.
+This contradicts rupture preservation and discharges the proof
+obligation explicitly within the canonical development file.
+
+\begin{remark}[Correction of an earlier formulation]
+\label{rem:emg-correction}
+An earlier draft of this development presented a related claim,
+labelled \texttt{emg\_sensitive\_not\_admissible}, asserting that any
+predicate sensitive to the emergent--algebraic distinction is
+inadmissible with respect to the algebraic observation map.
+Under the present definition of \texttt{alg\_equiv} that formulation
+is in fact false, and the corresponding lemma has been removed from
+the development rather than retained as an \texttt{Admitted}
+declaration.
+The witness-based non-factorisation result stated above is the correct
+theorem.
+It captures the substantive content of the earlier claim, namely that
+the algebraic regime cannot retain the distinctions on which rupture
+depends, without the spurious universal quantification over
+admissibility predicates that rendered the earlier formulation
+unsound.
+\end{remark}
+
+% ------------------------------------------------------------------
+\subsection{The Abstract Composition Boundary}
+% ------------------------------------------------------------------
+
+The only remaining admitted theorem in the development is the abstract
+statement \texttt{rupture\_decomposition}, formulated over the
+parameter \texttt{par\_compose}.
+This is intentional.
+Since \texttt{par\_compose} is introduced as an opaque composition
+operator, the theorem is not derivable without additional composition
+axioms.
+Rather than proving an artefact of an unconstrained abstraction, the
+development proves the concrete theorem
+\texttt{rupture\_decomposition\_proved} for the explicit
+\texttt{SimpleSynergyCompose} instance, where the required bridge laws
+are established.
+
+This distinction is methodological rather than provisional.
+The abstract statement specifies the interface conditions required of
+any admissible composition operator, and the concrete theorem
+certifies one realised instance satisfying those conditions.
+Any further module bound by \texttt{COMPOSITION\_SIG} obtains the
+theorem at instantiation time, conditional on supplying the axioms the
+signature names.
+
+% ------------------------------------------------------------------
+\subsection{Higher-Order Generalisation}
+% ------------------------------------------------------------------
+
+Higher-order warrant debt for systems with more than two interacting
+components is not part of the present mechanisation.
+The current Rocq development proves the binary case, in which
+interaction debt first appears non-trivially.
+The finite dependency lattice required for the general case is
+mathematically straightforward but proof-theoretically lengthy, and is
+reserved for subsequent work.
+
+% ==================================================================
+\section{Conclusion}
+\label{sec:conclusion}
+% ==================================================================
+
+Formal verification does not certify truth first.
+It certifies admissibility first.
+Only after admissibility is established does proof begin.
+
+The Factorisation Theorem states the abstract criterion: a predicate
+is decidable from observation if and only if the observation-induced
+partition is fine enough to preserve the distinctions the predicate
+requires.
+
+The Warrant Debt Theorem is the concrete operational instance of that
+criterion.
+When algebraically equivalent perturbations are distinguished by
+empirical evidence, the corresponding empirical tolerance predicate is
+not admissible.
+This result is fully mechanised in Rocq.
+
+The Rupture Decomposition Theorem extends the account to composed
+systems.
+At the binary level, composite failure reduces to one of two cases:
+local component rupture or a named interaction term.
+The binary result is fully proved in Rocq for the concrete
+\texttt{SimpleSynergyCompose} instance, and the abstract theorem over
+\texttt{COMPOSITION\_SIG} is provable for any module that supplies
+the required composition axioms.
+
+The higher-order extension generalises this account to the full
+dependency family.
+Global failures decompose into local failures, lower-order interaction
+debts, or irreducible higher-order warrant debt determined by minimal
+support sets within the dependency family of the global predicate.
+The minimal support set identifies the smallest subsystem on which the
+global predicate genuinely depends, and therefore the smallest locus
+at which institutional responsibility can be assigned.
+This higher-order extension is presented at the level of mathematical
+structure and is identified as a proposed extension to the present
+Rocq development rather than a result of it.
+
+The Non-Factorisation Theorem is fully proved in the Rocq development
+and rules out any total algebraic projection that preserves rupture
+behaviour for every tolerance predicate.
+
+Together, these results separate two distinct sources of verification
+failure.
+Representational failure occurs when the observational regime is too
+coarse and admissibility fails; it requires refinement of the
+observation map.
+Compositional failure occurs when admissibility holds but interaction
+produces rupture; it is analysed within the fixed observational regime.
+
+More proof cannot repair the first.
+More abstraction cannot eliminate the second.
+
+The connections to abstract interpretation
+\cite{cousot1977,cousot1979},
+Ehrenfeucht--Fra\"{i}ss\'{e} indistinguishability
+\cite{ehrenfeucht1961,libkin2004},
+Beth definability
+\cite{beth1953,hodges1993},
+and observational equivalence
+\cite{milner1980,milner1989}
+are structural rather than decorative.
+
+They place admissibility inside an established family of results
+concerning abstraction, quotienting, and definability: when the
+quotient destroys the distinction, proof cannot restore it.
+
+One further observation.
+
+Whitehead's account of process treats the constitution of a proposition
+and the determination of its observational conditions as
+inseparable~\cite{whitehead1929}.
+
+The type
+\[
+\texttt{WarrantDebt}(e,p,q)
+\]
+gives this a precise formal referent.
+
+It is the witness that the empirical record preserves a distinction
+that the algebraic regime has excluded.
+
+The evidence knows the difference.
+The formal channel does not.
+
+Verification is therefore not the reporting of pre-existing truth.
+It is the construction, under explicit structural conditions, of the
+proof obligations that make truth formally admissible in the first
+place.
+
+% ==================================================================
+\section*{Statements and Declarations}
+\addcontentsline{toc}{section}{Statements and Declarations}
+% ==================================================================
+
+\paragraph{Funding.}
+The author received no funding, grants, or other financial support
+for the research, authorship, or preparation of this manuscript.
+
+\paragraph{Competing interests.}
+The author has no competing financial or non-financial interests to
+disclose that are relevant to the content of this article.
+
+\paragraph{Data availability.}
+This is a formal verification paper and contains no empirical
+datasets. The Rocq source files corresponding to the mechanised
+results reported in Sections~\ref{sec:warrant}--\ref{sec:boundary},
+including the proofs of the Warrant Debt Theorem, the concrete
+rupture decomposition theorem for \texttt{SimpleSynergyCompose}, and
+the Non-Factorisation Theorem, are available in the canonical
+development file \texttt{bdgi\_perturbation\_proved.v} at
+\url{https://github.com/dhwcmoore/structural-admissibility-in-rocq}.
+
+\paragraph{Code availability.}
+The Rocq development is distributed under an open licence at the
+repository cited above and compiles against Rocq 8.18 or later.
+
+\paragraph{Author contributions.}
+The sole author conceived the framework, developed the formalisation,
+mechanised the proofs, and wrote the manuscript.
+
+\paragraph{Ethics approval.}
+Not applicable. The research did not involve human participants,
+human tissue, or animals.
+
+% ==================================================================
+\bibliographystyle{plainnat}
+\begin{thebibliography}{35}
+
+\bibitem{abramsky1994}
+S.~Abramsky and A.~Jung.
+\newblock Domain theory.
+\newblock In S.~Abramsky, D.~M. Gabbay, and T.~S.~E. Maibaum, editors,
+  \emph{Handbook of Logic in Computer Science}, volume~3, pages 1--168.
+  Clarendon Press, 1994.
+
+\bibitem{barras1997}
+B.~Barras et al.
+\newblock The {Coq} proof assistant reference manual.
+\newblock Technical report, INRIA, 1997. Version 6.1.
+
+\bibitem{bertot2004}
+Y.~Bertot and P.~Cast\'{e}ran.
+\newblock \emph{Interactive Theorem Proving and Program Development:
+  Coq'Art}.
+\newblock Springer, 2004.
+
+\bibitem{beth1953}
+E.~W. Beth.
+\newblock On {P}adoa's method in the theory of definition.
+\newblock \emph{Indagationes Mathematicae}, 15:330--339, 1953.
+
+\bibitem{clarke1981}
+B.~L. Clarke.
+\newblock A calculus of individuals based on `connection'.
+\newblock \emph{Notre Dame Journal of Formal Logic}, 22(3):204--218, 1981.
+
+\bibitem{cohn1997}
+A.~G. Cohn, B.~Bennett, J.~Gooday, and N.~M. Gotts.
+\newblock Qualitative spatial representation and reasoning with the region
+  connection calculus.
+\newblock \emph{GeoInformatica}, 1(3):275--316, 1997.
+
+\bibitem{cousot1977}
+P.~Cousot and R.~Cousot.
+\newblock Abstract interpretation: A unified lattice model for static analysis
+  of programs by construction or approximation of fixpoints.
+\newblock In \emph{Proceedings of the 4th {ACM} Symposium on Principles of
+  Programming Languages}, pages 238--252. {ACM}, 1977.
+
+\bibitem{cousot1979}
+P.~Cousot and R.~Cousot.
+\newblock Systematic design of program analysis frameworks.
+\newblock In \emph{Proceedings of the 6th {ACM} Symposium on Principles of
+  Programming Languages}, pages 269--282. {ACM}, 1979.
+
+\bibitem{cousot2002}
+P.~Cousot.
+\newblock Constructive design of a hierarchy of semantics of a transition
+  system by abstract interpretation.
+\newblock \emph{Theoretical Computer Science}, 277(1--2):47--103, 2002.
+
+\bibitem{dijk1976}
+E.~W. Dijkstra.
+\newblock \emph{A Discipline of Programming}.
+\newblock Prentice-Hall, 1976.
+
+\bibitem{ehrenfeucht1961}
+A.~Ehrenfeucht.
+\newblock An application of games to the completeness problem for formalized
+  theories.
+\newblock \emph{Fundamenta Mathematicae}, 49:129--141, 1961.
+
+\bibitem{fraisse1954}
+R.~Fra\"{i}ss\'{e}.
+\newblock Sur quelques classifications des syst\`{e}mes de relations.
+\newblock \emph{Publications Scientifiques de l'Universit\'{e} d'Alger},
+  1:35--182, 1954.
+
+\bibitem{giacobazzi1998}
+R.~Giacobazzi, F.~Ranzato, and F.~Scozzari.
+\newblock Making abstract interpretations complete.
+\newblock \emph{Journal of the {ACM}}, 47(2):361--416, 1998.
+
+\bibitem{gonthier2008}
+G.~Gonthier.
+\newblock Formal proof --- the four-color theorem.
+\newblock \emph{Notices of the {AMS}}, 55(11):1382--1393, 2008.
+
+\bibitem{hales2015}
+T.~Hales et al.
+\newblock A formal proof of the {Kepler} conjecture.
+\newblock \emph{Forum of Mathematics, Pi}, 5:e2, 2017.
+
+\bibitem{hodges1993}
+W.~Hodges.
+\newblock \emph{Model Theory}.
+\newblock Cambridge University Press, 1993.
+
+\bibitem{jacobs1999}
+B.~Jacobs.
+\newblock \emph{Categorical Logic and Type Theory}.
+\newblock Elsevier, 1999.
+
+\bibitem{libkin2004}
+L.~Libkin.
+\newblock \emph{Elements of Finite Model Theory}.
+\newblock Springer, 2004.
+
+\bibitem{milner1980}
+R.~Milner.
+\newblock A calculus of communicating systems.
+\newblock \emph{Lecture Notes in Computer Science}, 92, 1980.
+
+\bibitem{milner1989}
+R.~Milner.
+\newblock \emph{Communication and Concurrency}.
+\newblock Prentice Hall, 1989.
+
+\bibitem{moore2024rsl}
+D.~Moore.
+\newblock Regional structure logic: Boundary closure, primitive connection, and
+  structural admissibility.
+\newblock Manuscript, VeriBound, 2024.
+
+\bibitem{nipkow2002}
+T.~Nipkow, L.~C. Paulson, and M.~Wenzel.
+\newblock \emph{Isabelle/{HOL}: A Proof Assistant for Higher-Order Logic}.
+\newblock Springer, 2002.
+
+\bibitem{pierce2002}
+B.~C. Pierce.
+\newblock \emph{Types and Programming Languages}.
+\newblock MIT Press, 2002.
+
+\bibitem{randell1992}
+D.~A. Randell, Z.~Cui, and A.~G. Cohn.
+\newblock A spatial logic based on regions and connection.
+\newblock In \emph{Proceedings of the 3rd International Conference on
+  Knowledge Representation and Reasoning}, pages 165--176.
+  Morgan Kaufmann, 1992.
+
+\bibitem{sangiorgi2011}
+D.~Sangiorgi.
+\newblock \emph{Introduction to Bisimulation and Coinduction}.
+\newblock Cambridge University Press, 2011.
+
+\bibitem{simons1987}
+P.~Simons.
+\newblock \emph{Parts: A Study in Ontology}.
+\newblock Clarendon Press, 1987.
+
+\bibitem{smith2000}
+B.~Smith and A.~C. Varzi.
+\newblock Fiat and bona fide boundaries.
+\newblock \emph{Philosophy and Phenomenological Research},
+  60(2):401--420, 2000.
+
+\bibitem{spivak2014}
+D.~I. Spivak.
+\newblock \emph{Category Theory for the Sciences}.
+\newblock MIT Press, 2014.
+
+\bibitem{stell2000}
+J.~G. Stell.
+\newblock Boolean connection algebras: A new approach to the region connection
+  calculus.
+\newblock \emph{Artificial Intelligence}, 122(1--2):111--136, 2000.
+
+\bibitem{tabareau2021}
+N.~Tabareau, E.~Tanter, and M.~Sozeau.
+\newblock The marriage of univalence and parametricity.
+\newblock \emph{Journal of the {ACM}}, 68(1):1--44, 2021.
+
+\bibitem{whitehead1929}
+A.~N. Whitehead.
+\newblock \emph{Process and Reality: An Essay in Cosmology}.
+\newblock Macmillan, 1929.
+
+\bibitem{winskel1993}
+G.~Winskel.
+\newblock \emph{The Formal Semantics of Programming Languages}.
+\newblock MIT Press, 1993.
+
+\end{thebibliography}
+
+\end{document}
