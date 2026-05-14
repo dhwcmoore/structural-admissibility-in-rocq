@@ -1,27 +1,28 @@
+# Dune / OCaml build output
 _build/
-*.byte
-*.native
-.merlin
 
-# Rocq compiled artifacts
-*.vo
-*.vok
-*.vos
-*.glob
+# LaTeX build junk
 *.aux
-
-# LaTeX generated files
-*.log
-*.out
-*.pdf
-!paper/*.pdf
-*.synctex.gz
-*.fls
-*.fdb_latexmk
-*.toc
-*.lof
-*.lot
 *.bbl
 *.blg
-*.nav
-*.snm
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.toc
+*.run.xml
+*.bcf
+texput.log
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Python junk
+__pycache__/
+*.pyc
+
+# downloaded template archives
+Springer_Nature_LaTeX_Template__3_.zip
+Springer_Nature_LaTeX_Template__3_/

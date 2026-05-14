@@ -1,4 +1,4 @@
-(* Domain types, mirroring the Rocq development in rocq/bdgi_perturbation.v.
+(* Domain types, mirroring the Rocq development in rocq/bdgi_perturbation_proved.v.
    BType / CarrierClass / Interval / Perturbation are the OCaml counterparts
    of the inductive and record types in Section 1 of that file. *)
 

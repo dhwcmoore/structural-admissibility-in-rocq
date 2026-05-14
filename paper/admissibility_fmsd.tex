@@ -85,22 +85,20 @@ interface of a verification system conflates states that a safety
 predicate must distinguish, the verification problem is structurally
 malformed: the required information has already been destroyed by the
 observational quotient. We formalise this condition as structural
-admissibility. A predicate is admissible exactly when it factors through
-the equivalence relation induced by observation, or equivalently when the
-observation-induced quotient preserves the distinctions required by the
-predicate. For perturbation systems, we introduce warrant debt as an
+admissibility. A predicate is admissible exactly when it factors through the
+observational quotient.
+Equivalently, the quotient must preserve every distinction required by
+the predicate. For perturbation systems, we introduce warrant debt as an
 operational witness of admissibility failure: warrant debt occurs when
 algebraic observation treats two perturbations as equivalent while
 empirical evidence distinguishes them. The Warrant Debt Theorem is proved
 in Rocq and shows that whenever warrant debt exists, the corresponding
-empirical tolerance predicate is not admissible. The mechanisation
-establishes inadmissibility as a prior proof obligation for system
-verification rather than a failure of proof search. The Rocq development
+empirical tolerance predicate is not admissible. The mechanisation treats inadmissibility as a proof obligation prior to
+proof search. The Rocq development
 proves the Warrant Debt Theorem, the concrete rupture decomposition theorem
 for the \texttt{SimpleSynergyCompose} instance, and the Non-Factorisation
-Theorem. The abstract composition theorem is stated at the interface level
-and is proved for a concrete composition instance satisfying the required
-axioms. A higher-order dependency extension is presented as a mathematical
+Theorem. The abstract composition theorem is stated as an interface condition.
+The concrete instance satisfying that interface is proved. A higher-order dependency extension is presented as a mathematical
 generalisation, not as part of the present mechanisation.}
 
 \keywords{Formal verification, Safety-critical systems, System reliability, Observational quotients, Warrant debt, Rocq mechanisation}
@@ -186,22 +184,22 @@ implies non-admissibility is fully proved.
 The paper makes three contributions to the design of structurally sound
 verification systems.
 The Factorisation Theorem (Section~\ref{sec:quotients}) defines when a
-safety predicate is well-formed relative to an observation interface: it
-characterises admissibility in three equivalent forms (factorisation
-through the observation map, constancy on equivalence classes, and
-partition refinement) and is the formal criterion against which all
-subsequent results are measured.
+safety predicate is well formed relative to an observation interface.
+It gives three equivalent characterisations: factorisation through the
+observation map, constancy on equivalence classes, and partition
+refinement.
+This theorem is the criterion used by the rest of the paper.
 The Warrant Debt Theorem (Section~\ref{sec:warrant}) provides a
 mechanised witness of design-time inadmissibility: whenever empirical
 evidence distinguishes algebraically equivalent perturbations, the
 corresponding tolerance predicate cannot be verified within the current
 observational regime; the theorem is fully mechanised in Rocq.
-The mechanisation (Sections~\ref{sec:type}--\ref{sec:composition})
-identifies compositional failure and the limits of algebraic projection:
-a concrete rupture decomposition theorem is proved for the
-\texttt{SimpleSynergyCompose} instance, and the Non-Factorisation
-Theorem rules out total algebraic projections that preserve rupture
-behaviour in general. A higher-order extension to finite dependency
+The mechanised development then separates two further issues.
+Section~\ref{sec:composition} proves a concrete binary rupture
+decomposition theorem for \texttt{SimpleSynergyCompose}.
+Section~\ref{sec:boundary} proves the Non-Factorisation Theorem, which
+rules out total algebraic projections that preserve rupture behaviour
+in general. A higher-order extension to finite dependency
 families on $n$ components is set out at the level of mathematical
 structure as a proposed generalisation; the higher-order theorem is not
 part of the present mechanisation.
@@ -431,7 +429,7 @@ A factorisation through all of $O$ is obtained by assigning arbitrary
 Boolean values outside $\operatorname{im}(M)$.
 \end{proof}
 
-Theorem~\ref{thm:factorisation} is the spine of the paper.
+Theorem~\ref{thm:factorisation} is the central criterion used throughout the paper.
 
 A predicate is decidable from observation if and only if the
 observation-induced partition is fine enough to respect the
@@ -586,9 +584,8 @@ discarding emergent boundary information.
 The correctness predicates $\Phi$ become tolerance predicates over
 interface regions.
 
-This section introduces only the formal objects required for the
-Warrant Debt Theorem of Section~\ref{sec:warrant}; nothing here is
-independent of that purpose.
+This section introduces the formal objects required for the Warrant
+Debt Theorem of Section~\ref{sec:warrant}.
 
 % ------------------------------------------------------------------
 \subsection{Boundary Type Classification}
@@ -611,9 +608,9 @@ A perturbation is classified by one of three boundary types.
     recovered from the algebraic observation kernel alone.
 \end{enumerate}
 
-The distinction is representational rather than merely descriptive:
-\texttt{EMG} marks precisely the case in which algebraic observation
-is structurally insufficient.
+The distinction is representational.
+\texttt{EMG} marks the case in which algebraic observation is
+structurally insufficient.
 
 \end{definition}
 
@@ -738,9 +735,10 @@ The algebraic observation map strips emergent boundary information.
 The relation \texttt{alg\_equiv} is an equivalence relation on the
 algebraically observable subspace of perturbations.
 On the full \texttt{Perturbation} type it is a partial equivalence
-relation: emergent perturbations lie outside its domain of comparability,
-since \texttt{btype\_algebraic(EMG) = false} prevents any emergent
-perturbation from being related even to itself.
+relation.
+Emergent perturbations lie outside its domain: since
+\texttt{btype\_algebraic(EMG) = false}, no emergent perturbation is
+related even to itself.
 
 \begin{lstlisting}[style=rocq,
 caption={Algebraic equivalence and predicate admissibility.}]
@@ -892,8 +890,8 @@ the evidence while the algebraic observation regime identifies them.
 This is precisely $\WD(e,p,q)$, and Theorem~\ref{thm:wdt} implies that
 \texttt{empirical\_tol e} is not admissible under the current algebraic
 observation map.
-The correct response is not stronger proof search but refinement of the
-observation map to expose the distinction the evidence already records.
+The correct response is refinement of the observation map, not renewed
+proof search inside the same quotient.
 \end{example}
 
 % ------------------------------------------------------------------
@@ -1315,12 +1313,11 @@ In general, for a system with component family
 $
 C = \{C_1,\dots,C_n\}
 $,
-global inadmissibility cannot be reduced to a single residual
-interaction term without loss of explanatory force.
+global inadmissibility need not reduce to one residual interaction term.
 Such a residual merely records that some interaction debt exists; it
 does not identify the minimal locus of failure.
 
-The correct generalisation is hierarchical.
+The generalisation is hierarchical.
 For each non-empty subset
 $
 S \subseteq C
@@ -1336,19 +1333,17 @@ Then local failure is the case $|S| = 1$, pairwise interaction debt
 is the case $|S| = 2$ recovered by Theorem~\ref{thm:rupture}, triple
 interaction debt the case $|S| = 3$, and so forth.
 
-Accordingly, global rupture admits the decomposition
+Accordingly, global rupture can be analysed through the disjunctive
+family of support witnesses
 \[
-\Phi_{\mathrm{global}}
-\;=\;
-\bigvee_{S \subseteq C,\; S \neq \varnothing}
+\mathrm{Rup}(\Phi_{\mathrm{global}})
+\;\Rightarrow\;
+\bigvee_{\emptyset \neq S \subseteq C}
 \Sigma_S,
 \]
-where the operative question is not merely whether some
-$
-\Sigma_S
-$
-is non-zero, but which subsets $S$ are minimal witnesses of
-inadmissibility.
+where $\Sigma_S$ records that $S$ supports a witness of inadmissibility.
+The question is not whether some $\Sigma_S$ appears.
+The question is which $S$ is minimal.
 
 \begin{definition}[Dependency Family and Minimal Support]
 \label{def:dependency-family}
@@ -1366,25 +1361,28 @@ A subset $S \in \mathcal{D}(\Phi)$ is a \emph{minimal support set}
 when no proper subset of $S$ lies in $\mathcal{D}(\Phi)$.
 The minimal elements of $\mathcal{D}(\Phi)$ identify the smallest
 subsystems on which $\Phi$ genuinely depends.
+This definition is schematic: a full formalisation requires explicit
+projection maps $M_S$ and projected predicates $\Phi|_S$ for each
+subsystem $S \subseteq C$.
 
 \end{definition}
 
 A predicate may be admissible on every proper projection of size less
 than $k$, yet fail to be admissible on the full system.
-This is genuine $k$-th order synergy, not reducible to lower-order
-interaction.
+This is $k$-th order synergy.
 
 \begin{conjecture}[Higher-Order Warrant Debt]
 \label{thm:higher-order}
 
-Let $\Phi$ be a global predicate on a component family
-$C = \{C_1,\dots,C_n\}$ with admissibility-induced dependency family
+Let $\Phi$ be a global predicate on a finite component family
+$C = \{C_1,\ldots,C_n\}$, with admissibility-induced dependency family
 $\mathcal{D}(\Phi)$.
-If $\Phi$ is inadmissible relative to the observation map on $C$, and
-if for every proper subset $S' \subsetneq S$ of size strictly less than
-some $k \leq n$ the projected predicate $\Phi|_{S'}$ is admissible,
-then there exists a minimal support set $S^* \in \mathcal{D}(\Phi)$
-with $|S^*| \geq k$.
+Suppose that $\Phi$ is inadmissible relative to the observation map on
+$C$.
+If, for some $k \leq n$, every projected predicate $\Phi|_T$ is
+admissible for every subsystem $T \subseteq C$ with $|T| < k$, then
+there exists a minimal support set $S^* \in \mathcal{D}(\Phi)$ with
+$|S^*| \geq k$.
 The set $S^*$ is the smallest subsystem on which higher-order warrant
 debt arises.
 
@@ -1426,16 +1424,20 @@ Yet the joint configuration may violate a global invariant.
 The admissibility failure is not that the data are noisy.
 It is that the observational quotient supplied to the verifier has
 collapsed the distinction on which the global safety predicate depends.
+The claim is not that the present paper models those domains in detail,
+but that the admissibility obligation identifies a design condition any
+such monitor must satisfy.
 
-The Rocq-certified warrant-debt witness gives this failure an auditable
-form.
+The Rocq-certified warrant-debt witness makes this failure auditable.
 It identifies that algebraic equivalence and empirical evidence disagree,
 and therefore that the current observation interface is not adequate for
 the target safety predicate.
-In an industrial safety lifecycle, this witness can be used: before
-deployment to reject an insufficient monitor design; during operation to
-trigger structural review rather than ordinary anomaly triage; and after
-failure to identify which observational boundary must be refined.
+In an industrial safety lifecycle, the witness has three uses.
+Before deployment, it can reject an insufficient monitor design.
+During operation, it can trigger structural review rather than ordinary
+anomaly triage.
+After failure, it can identify which observational boundary must be
+refined.
 
 \begin{table}[t]
 \caption{Safety-lifecycle role of structural admissibility}
@@ -1474,43 +1476,34 @@ The bridge from rupture to audit therefore requires classification
 rather than mere existential detection.
 The bridge result must identify not only that interaction debt exists,
 but the minimal support set on which it arises.
-Only then can verification terminate in assignable warrant debt:
-which observational boundary failed, which refinement is required,
-and which subsystem, interface, or design assumption must be reviewed.
+Only then can verification assign warrant debt: the failed
+observational boundary, the required refinement, and the subsystem,
+interface, or design assumption to be reviewed.
 
-\begin{corollary}[Strengthened Rupture-to-Synergy Bridge]
+\begin{remark}[Strengthened Rupture-to-Synergy Bridge]
 \label{cor:bridge}
 
-If a global predicate $\Phi$ on the component family $C$ ruptures, and
-if no lower-order interaction debt of order strictly less than $k$
-suffices to witness this rupture, then the rupture implies the
-existence of a minimal support set $S^* \in \mathcal{D}(\Phi)$ of
-order at least $k$ that witnesses higher-order warrant debt.
+Assuming the higher-order dependency-family structure of
+Conjecture~\ref{thm:higher-order}, a global rupture whose lower-order
+projections do not suffice determines a minimal support set
+$S^* \in \mathcal{D}(\Phi)$ of order at least $k$ that witnesses
+higher-order warrant debt.
 
-\end{corollary}
+\end{remark}
 
 This is stronger than the binary bridge axiom of
 Section~\ref{sec:composition}, which records existential interaction
 debt without classifying its order.
-The strengthened formulation converts a rhetorical remainder into a
+The strengthened formulation replaces an unclassified residual with a
 formal object: the minimal witness of inadmissibility, located at a
 definite level of the dependency hierarchy.
 
-Together, the two proved results (Theorem~\ref{thm:wdt} and
-Theorem~\ref{thm:rupture}), together with the higher-order conjecture
-(Conjecture~\ref{thm:higher-order}), separate distinct failure modes.
-Of these, the first two are fully mechanised in Rocq for the concrete
-\texttt{SimpleSynergyCompose} instance, while the third is established
-here at the level of mathematical structure and is identified in
-Section~\ref{sec:boundary} as a proposed extension of the Rocq
-development.
-Representational failure, certified by warrant debt, requires
-refinement of the observation map.
-Compositional failure, certified at the binary level by rupture
-decomposition and at higher orders by minimal support sets within the
-dependency family, is analysed within a fixed observational regime.
-The distinction is structural: refinement cannot eliminate higher-order
-warrant debt, and composition cannot repair inadmissibility.
+The two mechanised results, Theorem~\ref{thm:wdt} and
+Theorem~\ref{thm:rupture}, separate representational failure from
+binary compositional failure.
+Conjecture~\ref{thm:higher-order} indicates how this separation should
+extend to higher-order dependency families, but that extension is not
+claimed as a mechanised result of the present paper.
 
 % ==================================================================
 \section{Mechanisation Boundary}
@@ -1519,15 +1512,13 @@ warrant debt, and composition cannot repair inadmissibility.
 
 The principal non-factorisation result is now fully proved in the Rocq
 development.
-In particular, the theorem \texttt{no\_alg\_factorisation},
+In particular, the theorem \texttt{no\_alg\_factorisation} is
 established in the canonical development file
-\texttt{bdgi\_perturbation\_proved.v},
-proves by explicit witness construction that the rupture predicate
-cannot factor through the algebraic quotient induced by
-\texttt{alg\_equiv}.
-This discharges the earlier conjectural status of non-factorisation
-and makes precise the claim that observational indistinguishability is
-a structural rather than merely epistemic limitation.
+\texttt{bdgi\_perturbation\_proved.v}.
+It proves, by explicit witness construction, that rupture cannot be
+uniformly preserved by projection into the algebraic fragment.
+This removes the earlier conjectural status of non-factorisation.
+It also makes the limitation structural, not epistemic.
 
 % ------------------------------------------------------------------
 The theorem should be read as a maximal-expressivity limit.
@@ -1601,16 +1592,15 @@ labelled \texttt{emg\_sensitive\_not\_admissible}, asserting that any
 predicate sensitive to the emergent--algebraic distinction is
 inadmissible with respect to the algebraic observation map.
 Under the present definition of \texttt{alg\_equiv} that formulation
-is in fact false, and the corresponding lemma has been removed from
+is not valid, and the corresponding lemma has been removed from
 the development rather than retained as an \texttt{Admitted}
 declaration.
 The witness-based non-factorisation result stated above is the correct
 theorem.
 It captures the substantive content of the earlier claim, namely that
 the algebraic regime cannot retain the distinctions on which rupture
-depends, without the spurious universal quantification over
-admissibility predicates that rendered the earlier formulation
-unsound.
+depends, without the invalid universal quantification over admissibility
+predicates present in the earlier formulation.
 \end{remark}
 
 % ------------------------------------------------------------------
@@ -1655,9 +1645,10 @@ reserved for subsequent work.
 \label{sec:conclusion}
 % ==================================================================
 
-Formal verification does not certify truth first.
-It certifies admissibility first.
-Only after admissibility is established does proof begin.
+For verification systems mediated by an observation interface,
+admissibility is prior to proof.
+Only after the target predicate is shown to respect the observational
+quotient does proof search address the predicate itself.
 
 The Factorisation Theorem states the abstract criterion: a predicate
 is decidable from observation if and only if the observation-induced
@@ -1680,18 +1671,14 @@ The binary result is fully proved in Rocq for the concrete
 \texttt{COMPOSITION\_SIG} is provable for any module that supplies
 the required composition axioms.
 
-The higher-order extension generalises this account to the full
-dependency family.
-Global failures decompose into local failures, lower-order interaction
-debts, or irreducible higher-order warrant debt determined by minimal
-support sets within the dependency family of the global predicate.
-The minimal support set identifies the smallest subsystem on which the
-global predicate genuinely depends, and therefore the smallest locus
-at which the subsystem, interface, or design assumption that must be
-reviewed can be identified.
-This higher-order extension is presented at the level of mathematical
-structure and is identified as a proposed extension to the present
-Rocq development rather than a result of it.
+The higher-order extension is not mechanised here.
+It indicates how the binary result should generalise to dependency
+families.
+In that setting, a global failure is classified by a minimal support
+set.
+That set identifies the smallest subsystem on which the global
+predicate depends, and hence the smallest subsystem, interface, or
+design assumption requiring review.
 
 The Non-Factorisation Theorem is fully proved in the Rocq development
 and rules out any total algebraic projection that preserves rupture
@@ -1716,7 +1703,7 @@ Beth definability
 \cite{beth1953,hodges1993},
 and observational equivalence
 \cite{milner1980,milner1989}
-are structural rather than decorative.
+are structural.
 
 They place admissibility inside an established family of results
 concerning abstraction, quotienting, and definability: when the
