@@ -26,3 +26,6 @@ __pycache__/
 # downloaded template archives
 Springer_Nature_LaTeX_Template__3_.zip
 Springer_Nature_LaTeX_Template__3_/
+# AI-assisted tool local configuration
+.claude/
+.anthropic/
