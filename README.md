@@ -1,15 +1,17 @@
-# Structural Admissibility in Rocq
+# Structural Admissibility for Verification Systems
 
 Formal verification of observational admissibility: Rocq proofs of warrant debt,
 non-factorisation, and rupture decomposition with OCaml type-level realisation.
 
 This repository accompanies the paper:
 
-**Structural Admissibility in Rocq: Warrant Debt, Observational Quotients, and
-Type-Theoretic Verification**  
-Duston Moore — Independent Scholar
+**Structural Admissibility for Verification Systems: Warrant Debt and Observational
+Quotients in Rocq**  
+Duston Moore — Independent Researcher
 
-`paper/admissibility_fmsd.tex` — LaTeX source (Springer FMSD submission)
+`paper/admissibility_fmsd.tex` — LaTeX source for the Springer FMSD submission  
+`paper/admissibility_fmsd.pdf` — compiled manuscript  
+`rocq/bdgi_perturbation_proved.v` — canonical Rocq/Coq proof file
 
 ---
 
@@ -29,18 +31,24 @@ mechanised in Rocq.
 
 ## What is proved in Rocq
 
-All results below are in `rocq/bdgi_perturbation_proved.v` with no unintended
-`Admitted`.
+The central mechanised results are in `rocq/bdgi_perturbation_proved.v`.
 
-| Theorem | Identifier in file | Lines | Paper |
-|---|---|---|---|
-| Warrant Debt Theorem | `warrant_debt_implies_non_admissible` | 386–395 | §4.4 |
-| Non-Factorisation Theorem | `no_alg_factorisation` | 344–355 | §7 |
-| Monitor-as-Evidence | `monitor_as_evidence` | 204–212 | §7 |
-| Conditional Safety | `conditional_safety` | 170–180 | §7 |
-| Rupture Decomposition (concrete, `SimpleSynergyCompose`) | `rupture_decomposition_proved` | 536–547 | §6.2 |
-| Rupture bridge lemma | `SimpleSynergyCompose.rupture_synergy_bridge` | 509–524 | §6.2 |
-| Every algebraic perturbation satisfies `emg_sensitive_tol` | `alg_tol` | 329–338 | §7 |
+| Theorem | Identifier in file | Paper |
+|---|---|---|
+| Warrant Debt Theorem | `warrant_debt_implies_non_admissible` | §4.4 |
+| Non-Factorisation Theorem | `no_alg_factorisation` | §7 |
+| Rupture Decomposition (concrete, `SimpleSynergyCompose`) | `rupture_decomposition_proved` | §6.2 |
+| Rupture bridge lemma | `SimpleSynergyCompose.rupture_synergy_bridge` | §6.2 |
+
+### Additional supporting lemmas
+
+The file also contains supporting lemmas not claimed as central results of the paper:
+
+| Lemma | Identifier |
+|---|---|
+| Monitor-as-Evidence | `monitor_as_evidence` |
+| Conditional Safety | `conditional_safety` |
+| Every algebraic perturbation satisfies `emg_sensitive_tol` | `alg_tol` |
 
 Key definitions:
 
@@ -57,19 +65,19 @@ Key definitions:
 
 ## What is specified but not mechanised
 
-### Abstract rupture decomposition (`rupture_decomposition`, line 126)
+### Abstract rupture decomposition
 
-`Admitted`. This is intentional. The theorem is stated over an opaque `Parameter
-par_compose` and is not derivable without concrete composition laws. The concrete
-version is fully proved via `SimpleSynergyCompose.rupture_synergy_bridge`. Any
-module satisfying `COMPOSITION_SIG` obtains the result at instantiation time.
+The abstract statement `rupture_decomposition` is intentionally left at the
+interface level. It is stated over an opaque `Parameter par_compose` and is not
+counted among the proved results claimed in the paper. The concrete version is
+fully proved for `SimpleSynergyCompose`.
 
-### Higher-Order Warrant Debt (paper §6.3, Theorem 6.4)
+### Higher-Order Warrant Debt (paper §6.3, Conjecture 6.5)
 
-The generalisation to `k`-component systems — dependency families, minimal support
-sets, and the powerset lattice structure — is stated mathematically in the paper.
-It is not mechanised. The binary case (`k = 2`) is the content of
-`rupture_decomposition_proved`.
+The generalisation to `k`-component systems, including dependency families,
+minimal support sets, and powerset-lattice structure, is stated as a conjectural
+mathematical extension. It is not mechanised in the present development. The
+binary case (`k = 2`) is the content of `rupture_decomposition_proved`.
 
 ---
 
@@ -120,7 +128,8 @@ test/
 
 ## Building
 
-**Rocq** (tested with 8.18.0, compiled with OCaml 4.14.1):
+**Rocq / Coq**  
+Tested with Coq 8.18.0 and OCaml 4.14.1.
 
 ```sh
 cd rocq && coqc bdgi_perturbation_proved.v
@@ -143,11 +152,11 @@ cd paper && pdflatex admissibility_fmsd.tex && pdflatex admissibility_fmsd.tex
 ## Citation
 
 ```bibtex
-@unpublished{moore2025admissibility,
+@unpublished{moore2026admissibility,
   author = {Duston Moore},
-  title  = {Structural Admissibility in {Rocq}: Warrant Debt, Observational
-            Quotients, and Type-Theoretic Verification},
-  year   = {2025},
+  title  = {Structural Admissibility for Verification Systems: Warrant Debt and Observational
+            Quotients in {Rocq}},
+  year   = {2026},
   note   = {Available at \url{https://github.com/dhwcmoore/structural-admissibility-in-rocq}}
 }
 ```
