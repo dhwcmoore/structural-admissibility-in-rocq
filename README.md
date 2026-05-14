@@ -9,8 +9,7 @@ This repository accompanies the paper:
 Type-Theoretic Verification**  
 Duston Moore — Independent Scholar
 
-`paper/admissibility_v10.tex` — LaTeX source  
-`paper/admissibility_v10.pdf` — compiled manuscript
+`paper/admissibility_fmsd.tex` — LaTeX source (Springer FMSD submission)
 
 ---
 
@@ -78,12 +77,10 @@ It is not mechanised. The binary case (`k = 2`) is the content of
 
 ```
 paper/
-  admissibility_v10.tex     LaTeX source
-  admissibility_v10.pdf     compiled manuscript
+  admissibility_fmsd.tex        LaTeX source (Springer FMSD submission)
 
 rocq/
   bdgi_perturbation_proved.v   canonical proof file (no unintended Admitted)
-  bdgi_perturbation.v          earlier skeleton with Admitted placeholders
 
 ocaml/
   types.ml       domain types mirroring the Rocq development;
@@ -123,7 +120,7 @@ test/
 
 ## Building
 
-**Rocq** (≥ 8.18):
+**Rocq** (tested with 8.18.0, compiled with OCaml 4.14.1):
 
 ```sh
 cd rocq && coqc bdgi_perturbation_proved.v
@@ -135,10 +132,10 @@ cd rocq && coqc bdgi_perturbation_proved.v
 dune build && dune test
 ```
 
-**Paper**:
+**Paper** (requires Springer `sn-jnl.cls` template files in `paper/`):
 
 ```sh
-cd paper && pdflatex admissibility_v10.tex && pdflatex admissibility_v10.tex
+cd paper && pdflatex admissibility_fmsd.tex && pdflatex admissibility_fmsd.tex
 ```
 
 ---
